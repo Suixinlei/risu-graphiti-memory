@@ -1,0 +1,30 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j-graphmem
+    ports:
+      - '127.0.0.1:7474:7474'
+      - '127.0.0.1:7687:7687'
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-risu-graphmem-2026}
+    volumes:
+      - neo4j-graphmem-data:/data
+    restart: unless-stopped
+
+  # The sidecar is normally run from source (see README) so it can reach a
+  # gateway on the host loopback; this service is provided for completeness.
+  sidecar:
+    build: ./sidecar
+    depends_on:
+      - neo4j
+    ports:
+      - '127.0.0.1:8710:8710'
+    env_file: ./sidecar/.env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped
+
+volumes:
+  neo4j-graphmem-data:
