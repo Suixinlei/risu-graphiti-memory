@@ -2,7 +2,7 @@
 // //@name graphiti_memory
 // //@display-name Graphiti Long-Term Memory
 // //@api 3.0
-// //@version 0.1.0
+// //@version 0.1.2
 // //@author risu-graphiti-memory
 // //@link https://github.com/Suixinlei/risu-graphiti-memory
 // //@description Long-term memory layer backed by a Graphiti temporal knowledge graph sidecar. Retrieves relevant facts (with change history) into the prompt and ingests new messages. Requires the sidecar service (see repo README).
@@ -112,8 +112,43 @@ async function currentContext(): Promise<{
 
 // ---- ingestion (afterRequest) ----------------------------------------------
 
+interface StoryTime {
+  dt: string;
+  label: string;
+}
+
 interface Cursor {
   count: number;
+  story?: StoryTime | null;
+}
+
+const STATUS_BLOCK_RE = /<statusData>([\s\S]*?)<\/statusData>/gi;
+
+/**
+ * Parse the in-story clock out of a raw message's <statusData> block
+ * (time:21:30|date:4月22日 周三|daysElapsed:16|...). The story calendar is
+ * anchored to year 2026, wall-clock UTC+8. Uses the LAST statusData block
+ * found (latest scene time). Returns null when the text carries no clock.
+ */
+function parseStoryTime(text: string): StoryTime | null {
+  const blocks = [...text.matchAll(STATUS_BLOCK_RE)];
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const fields: Record<string, string> = {};
+    for (const kv of blocks[i][1].split('|')) {
+      const p = kv.indexOf(':');
+      if (p > 0) fields[kv.slice(0, p).trim()] = kv.slice(p + 1).trim();
+    }
+    const md = /(\d{1,2})月(\d{1,2})日/.exec(fields.date || '');
+    const hm = /^(\d{1,2}):(\d{2})/.exec(fields.time || '');
+    if (!md || !hm) continue;
+    const dt = new Date(Date.UTC(2026, +md[1] - 1, +md[2], +hm[1] - 8, +hm[2]));
+    if (isNaN(dt.getTime())) continue;
+    const label =
+      `${fields.date || ''} ${fields.time || ''}`.trim() +
+      (fields.daysElapsed ? `（故事第${fields.daysElapsed}天）` : '');
+    return { dt: dt.toISOString(), label };
+  }
+  return null;
 }
 
 let ingestBusy = false;
@@ -146,37 +181,52 @@ async function syncIngest(cfg: Config, aiContent: string): Promise<string> {
       // (the skipped range is not re-ingested; stale facts are handled by the
       // graph's temporal invalidation).
       if (cursor.count > msgs.length) {
-        await storage.setItem(key, { count: msgs.length } as Cursor);
+        await storage.setItem(key, { count: msgs.length, story: cursor.story } as Cursor);
         return;
       }
-      const delta = msgs.slice(cursor.count).map((m) => ({
-        role: m.role,
-        data: clean(m.data || ''),
-      }));
+
+      // The whole turn (pending user messages + this AI reply) goes in as ONE
+      // role-tagged episode — matching the batched backfill format so the
+      // extraction LLM gets the same scene context on both paths.
+      const parts: string[] = [];
+      for (const m of msgs.slice(cursor.count)) {
+        const body = clean(m.data || '');
+        if (body) parts.push(`——${m.role === 'user' ? '用户' : '角色'}——\n${body}`);
+      }
       const aiText = clean(aiContent);
-      if (aiText) delta.push({ role: 'char', data: aiText });
-      const toIngest = delta.filter((m) => m.data);
-      for (let i = 0; i < toIngest.length; i++) {
-        const m = toIngest[i];
+      if (aiText) parts.push(`——角色——\n${aiText}`);
+
+      // Story time: prefer this reply's statusData, then any message in the
+      // turn, then carry the last known clock forward (user-only turns keep
+      // the previous scene time).
+      let story = parseStoryTime(aiContent);
+      if (!story) {
+        for (let i = msgs.length - 1; i >= cursor.count && !story; i--) {
+          story = parseStoryTime(msgs[i].data || '');
+        }
+      }
+      if (!story) story = cursor.story || null;
+
+      if (parts.length) {
+        const header = story ? `【剧情时间】${story.label}\n\n` : '';
         await sidecarPost(
           cfg,
           '/episode',
           {
             group_id: ctx.group,
-            name: `live-${Date.now()}-${i}`,
-            body: m.data,
+            name: `live-${Date.now()}`,
+            body: header + parts.join('\n\n'),
             source: 'message',
-            source_description: `${ctx.charName || 'chat'}/${m.role}`,
-            reference_time: new Date().toISOString(),
+            source_description: `${ctx.charName || 'chat'}/turn`,
+            reference_time: story ? story.dt : new Date().toISOString(),
           },
           6000,
         );
       }
-      if (toIngest.length) {
-        await storage.setItem(key, { count: msgs.length + (aiText ? 1 : 0) } as Cursor);
-      } else {
-        await storage.setItem(key, { count: msgs.length } as Cursor);
-      }
+      await storage.setItem(key, {
+        count: msgs.length + (aiText ? 1 : 0),
+        story: story || cursor.story || null,
+      } as Cursor);
     } catch {
       // swallow — memory sync must never surface in the chat
     } finally {

@@ -17,7 +17,11 @@ OUT = Path('/tmp/fakellm-captures')
 OUT.mkdir(exist_ok=True)
 COUNTER = {'n': 0}
 
-REPLY = '（测试回复）柚月把伞递了过来，小声说："一起走吧，雨太大了。"'
+REPLY = (
+    '（测试回复）柚月把伞递了过来，小声说："一起走吧，雨太大了。"\n'
+    '<statusData>time:21:30|date:4月22日 周三|daysElapsed:16|characterName:柚月|'
+    'varId:yuzuki|location:教育院-中庭|affection:97</statusData>'
+)
 
 
 class Handler(BaseHTTPRequestHandler):
