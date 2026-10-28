@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "neo4j": "ok",
+  "queue_depth": 0,
+  "active": 0,
+  "pending": 0,
+  "ingest_protocol": 2,
+  "processed": 11,
+  "failed": 0
+}

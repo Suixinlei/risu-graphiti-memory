@@ -5,10 +5,10 @@
 ## 产品与结构
 
 - 本项目为 RisuAI 提供长期叙事记忆，不修改 RisuAI 本体。关注关系变化、事件、约定及其时间；当前数值状态仍由变量系统管理。
-- `plugin/src/index.ts`：API v3 插件；beforeRequest 检索并插入 system 消息，afterRequest 异步提交本轮 episode。参数每轮重读。
+- `plugin/src/index.ts`：API v3 插件；beforeRequest 检索并插入 system 消息，afterRequest 先持久化本轮 episode，后台提交并等待 completed 回执。参数每轮重读。
 - `plugin/src/risuai.d.ts`：宿主 API 类型参考；调用是异步的，使用公开 API 并正确 await。
 - `plugin/build.mjs`：esbuild IIFE 打包，将源码 `// //@` 元数据置于输出开头。交付 `plugin/dist/plugin.js`，不能交付 `plugin.body.js`。
-- `sidecar/main.py`：FastAPI + Graphiti + Neo4j；/episode 入队、/search 检索、/health 进程计数与数据库连通性，/episodes、/entities、/stats 检查分组数据。
+- `sidecar/main.py`：FastAPI + Graphiti + Neo4j；/episode/submit 幂等入队与完成回执、/search 检索、/health 进程计数与数据库连通性，/episodes、/entities、/stats 检查分组数据。
 - `sidecar/ontology.py`：双语实体类型与抽取指令；llm.py：结构化输出及 extra_body；embedder.py：每批最多 20 条；reranker.py：本地词汇重排。
 - `tools/backfill.py`：从外部生成的 JSON dump 导出、回填；eval.py：人工检索评估；fake_llm.py：聊天请求捕获服务，不模拟 Graphiti 抽取模型。
 - `docs/neo4j-browser/`：Browser 连接说明与四条只读 Cypher。关系/事实/episode 查询均按 group 过滤，必须保持结果上限；本地 UI 查询和样式不能代替仓库中的可恢复文件。
@@ -25,8 +25,10 @@
 - EMBEDDING_DIM 必须匹配模型和已有索引；不得为适配配置自动删库、重建索引或删除数据卷。
 - 自定义实体模型继承普通 Pydantic BaseModel，属性保持可选，避免与 Graphiti 自带字段冲突。
 - roster.txt 是启动时加载、所有 group 共用的特定故事名册。不要继续向通用逻辑加入角色硬编码，不宣称名册已按角色隔离。
-- /episode 的 202 只确认入队；queue_depth=0 不包含正在执行的任务。验收须核对指定 episode、处理计数、失败计数及可检索事实。
-- 队列不持久化，插件失败后仍推进游标，INGEST_RETRY 尚未接入 worker。修改时明确去重、确认、重试与恢复语义。
+- 202 本身不确认完成；只有协议 2 的 completed 回执可移除本地待提交记录。queue_depth 不含 active；pending 含排队与执行中任务。验收核对指定 episode、失败计数及可检索事实。
+- sidecar 队列不持久化，恢复来源是插件本地待提交正文或回填 JSONL。游标与正文必须一起持久化；回执不能覆盖并发追加。单进程处理，同一 group/name 不同内容必须拒绝。INGEST_RETRY 尚未接入 worker。
+- 回填名称使用角色/会话、绝对位置及内容摘要。旧名称只能在内容也一致时复用；不同 batch 边界不承诺语义去重。
+- 宿主参数只接受 string/int 等已支持类型，不使用 bool 元数据。整数初始化为 0，需正确应用默认值；更新插件后刷新宿主，再执行真实安装路径验收。
 
 ## 开发与验证
 

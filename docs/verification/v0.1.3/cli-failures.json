@@ -1,0 +1,10 @@
+{
+  "conflict": {
+    "exit": 1,
+    "stderr": "ingest incomplete: completed=0/1; HTTP Error 409: Conflict\n"
+  },
+  "503_timeout": {
+    "exit": 1,
+    "stderr": "ingest incomplete: completed=0/1; completion deadline exceeded; rerun the same JSONL to resume\n"
+  }
+}

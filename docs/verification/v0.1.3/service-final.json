@@ -1,0 +1,151 @@
+[
+  {
+    "check": "PASS concurrent duplicate submission",
+    "receipts": [
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 0,
+        "name": "receipt-1"
+      },
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 0,
+        "name": "receipt-1"
+      },
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 1,
+        "name": "receipt-1"
+      }
+    ],
+    "health": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 0,
+      "active": 1,
+      "pending": 1,
+      "ingest_protocol": 2,
+      "processed": 4,
+      "failed": 0
+    }
+  },
+  {
+    "check": "PASS completion receipt, committed replay, and conflicting-content rejection"
+  },
+  {
+    "check": "OBSERVED temporal extraction",
+    "group": "e2e-v013-1793174173953239000",
+    "facts": [
+      {
+        "fact": "林舟把钴蓝信标钥匙归还给阿澄，钥匙归阿澄所有，林舟不再持有。",
+        "uuid": "a340284d-730d-4ce9-b402-225ded449ba1",
+        "valid_at": "2026-04-22T03:00:00+00:00",
+        "invalid_at": null,
+        "expired": false,
+        "episode_uuids": [
+          "b3ddbcc0-4fbd-4c98-8175-8fd87b74a923"
+        ]
+      },
+      {
+        "fact": "钴蓝信标钥匙现在归林舟所有（由阿澄交给他保管）",
+        "uuid": "22d28d19-3692-4858-b564-098de8ca969b",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": "2026-04-22T03:00:00+00:00",
+        "expired": true,
+        "episode_uuids": [
+          "85aaa57c-9769-4ad2-8a12-61e1708c88dc"
+        ]
+      },
+      {
+        "fact": "阿澄把钴蓝信标钥匙交给林舟保管",
+        "uuid": "ba9e94db-a431-4fb8-ad2d-d2610d741b3b",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": "2026-04-22T03:00:00+00:00",
+        "expired": true,
+        "episode_uuids": [
+          "85aaa57c-9769-4ad2-8a12-61e1708c88dc"
+        ]
+      }
+    ]
+  },
+  {
+    "check": "PASS real extraction, embedding, temporal invalidation and group isolation",
+    "facts": [
+      {
+        "fact": "林舟把钴蓝信标钥匙归还给阿澄，钥匙归阿澄所有，林舟不再持有。",
+        "uuid": "a340284d-730d-4ce9-b402-225ded449ba1",
+        "valid_at": "2026-04-22T03:00:00+00:00",
+        "invalid_at": null,
+        "expired": false,
+        "episode_uuids": [
+          "b3ddbcc0-4fbd-4c98-8175-8fd87b74a923"
+        ]
+      },
+      {
+        "fact": "钴蓝信标钥匙现在归林舟所有（由阿澄交给他保管）",
+        "uuid": "22d28d19-3692-4858-b564-098de8ca969b",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": "2026-04-22T03:00:00+00:00",
+        "expired": true,
+        "episode_uuids": [
+          "85aaa57c-9769-4ad2-8a12-61e1708c88dc"
+        ]
+      },
+      {
+        "fact": "阿澄把钴蓝信标钥匙交给林舟保管",
+        "uuid": "ba9e94db-a431-4fb8-ad2d-d2610d741b3b",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": "2026-04-22T03:00:00+00:00",
+        "expired": true,
+        "episode_uuids": [
+          "85aaa57c-9769-4ad2-8a12-61e1708c88dc"
+        ]
+      }
+    ]
+  },
+  {
+    "check": "PASS absolute-position/content names across windows, batches, repeats and edits"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=2/2 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=3/3 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS overlapping real backfills: 3 distinct episodes, no duplicates or skipped first message"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=1/1 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=1/1 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS legacy migration: identical content reused, same old name/different content ingested"
+  },
+  {
+    "check": "PASS service and CLI E2E",
+    "group": "e2e-v013-1793174173953239000",
+    "health": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 0,
+      "active": 0,
+      "pending": 0,
+      "ingest_protocol": 2,
+      "processed": 11,
+      "failed": 0
+    }
+  }
+]

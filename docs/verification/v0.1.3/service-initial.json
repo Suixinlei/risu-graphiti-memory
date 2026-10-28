@@ -1,0 +1,125 @@
+[
+  {
+    "check": "PASS concurrent duplicate submission",
+    "receipts": [
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 1,
+        "name": "receipt-1"
+      },
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 0,
+        "name": "receipt-1"
+      },
+      {
+        "protocol": 2,
+        "status": "pending",
+        "queued": true,
+        "position": 0,
+        "name": "receipt-1"
+      }
+    ],
+    "health": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 0,
+      "active": 1,
+      "pending": 1,
+      "ingest_protocol": 2,
+      "processed": 0,
+      "failed": 0
+    }
+  },
+  {
+    "check": "PASS completion receipt, committed replay, and conflicting-content rejection"
+  },
+  {
+    "check": "PASS real extraction, embedding, temporal invalidation and group isolation",
+    "facts": [
+      {
+        "fact": "林舟把钴蓝信标钥匙归还给阿澄，钥匙所有权已从林舟变更为阿澄，林舟不再拥有这把钥匙",
+        "uuid": "59aff272-2bec-478f-a0a1-d0c002403bba",
+        "valid_at": "2026-04-22T03:00:00+00:00",
+        "invalid_at": null,
+        "expired": false,
+        "episode_uuids": [
+          "fafc0ce6-0cc9-4704-b3f3-d1ea3fdb800d"
+        ]
+      },
+      {
+        "fact": "钴蓝信标钥匙现在归林舟所有",
+        "uuid": "8250e528-7f8b-49b1-a6b6-b5e4ec88343c",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": "2026-04-22T03:00:00+00:00",
+        "expired": true,
+        "episode_uuids": [
+          "5a0fc914-b84c-4f87-9cca-c5a3dbc85efc"
+        ]
+      },
+      {
+        "fact": "林舟归还钴蓝信标钥匙后，钥匙所有权归阿澄",
+        "uuid": "f9f1622f-f048-41c3-bec0-66cb520f919f",
+        "valid_at": "2026-04-22T03:00:00+00:00",
+        "invalid_at": null,
+        "expired": false,
+        "episode_uuids": [
+          "fafc0ce6-0cc9-4704-b3f3-d1ea3fdb800d"
+        ]
+      },
+      {
+        "fact": "阿澄把钴蓝信标钥匙交给林舟",
+        "uuid": "27f02622-1f07-4834-98ad-4f54c5b64aec",
+        "valid_at": "2026-04-22T02:00:00+00:00",
+        "invalid_at": null,
+        "expired": false,
+        "episode_uuids": [
+          "5a0fc914-b84c-4f87-9cca-c5a3dbc85efc"
+        ]
+      }
+    ]
+  },
+  {
+    "check": "PASS absolute-position/content names across windows, batches, repeats and edits"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=2/2 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=3/3 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS overlapping real backfills: 3 distinct episodes, no duplicates or skipped first message"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=1/1 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS CLI confirmed completion",
+    "output": "done: completed=1/1 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS legacy migration: identical content reused, same old name/different content ingested"
+  },
+  {
+    "check": "PASS service and CLI E2E",
+    "group": "e2e-v013-1793172985682201000",
+    "health": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 0,
+      "active": 0,
+      "pending": 0,
+      "ingest_protocol": 2,
+      "processed": 7,
+      "failed": 0
+    }
+  }
+]

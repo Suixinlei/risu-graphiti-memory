@@ -1,0 +1,27 @@
+{
+  "group": "e2e-v013-1793173576921878000",
+  "facts": [
+    {
+      "relation": "GAVE",
+      "fact": "阿澄把钴蓝信标钥匙交给林舟",
+      "valid_at": "2026-04-22T02:00:00Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "relation": "OWNS",
+      "fact": "钴蓝信标钥匙现在归林舟所有",
+      "valid_at": "2026-04-22T02:00:00Z",
+      "invalid_at": null,
+      "expired_at": null
+    },
+    {
+      "relation": "RETURNED_TO_OWNER",
+      "fact": "林舟把钴蓝信标钥匙归还阿澄，钥匙所有权从林舟变更为阿澄，林舟不再拥有这把钥匙",
+      "valid_at": null,
+      "invalid_at": null,
+      "expired_at": null
+    }
+  ],
+  "result": "FAIL temporal invalidation missing in service rerun"
+}

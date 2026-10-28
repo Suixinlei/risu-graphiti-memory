@@ -1,4 +1,4 @@
-"""Offline release checks. Failure scenarios: see v0.1.2.md before editing."""
+"""Offline release checks. Failure scenarios: see v0.1.3-plan.md and v0.1.2.md."""
 
 import ast
 import hashlib
@@ -36,6 +36,7 @@ def main():
         if line.startswith('// //@')
     )
     assert code.startswith(expected_header + '\n')
+    assert all(line.split()[2] in ('string', 'int') for line in expected_header.splitlines() if line.startswith('//@arg '))
     print(f'PASS: release metadata and package versions = {version}')
 
     python_files = list((ROOT / 'sidecar').glob('*.py'))
@@ -77,9 +78,10 @@ def main():
         print('PASS: export CLI batching, role tags, cleaning, story clock and carry-forward')
         short = export(2, 1, 'short.jsonl')
         full = export(3, 1, 'full.jsonl')
-        assert short[0]['name'] == full[0]['name'] == 'bf-0000-0000'
-        assert short[0]['body'] != full[0]['body']
-        print('KNOWN LIMITATION reproduced: distinct export windows reuse bf-0000-0000')
+        assert short[0]['name'] != full[0]['name']
+        assert [e['name'] for e in short] == [e['name'] for e in full[1:]]
+        assert all(e['name'].startswith('bf-v2-') for e in full)
+        print('PASS: overlapping export windows preserve identity without relative-name collisions')
 
     for doc in [ROOT / 'README.md', *sorted((ROOT / 'docs').rglob('*.md'))]:
         for target in re.findall(r'\[[^\]]*\]\(([^)]+)\)', doc.read_text()):
@@ -104,7 +106,7 @@ def main():
         checksums.append(f'{digest}  {artifact.name}\n')
         print(f'SHA256 {artifact.name}: {digest}')
     (bundle.parent / 'SHA256SUMS').write_text(''.join(checksums))
-    print('PASS: offline release checks; full product E2E NOT RUN')
+    print('PASS: offline release checks; product E2E is a separate release gate')
 
 
 if __name__ == '__main__':

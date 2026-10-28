@@ -2,12 +2,12 @@
 // //@name graphiti_memory
 // //@display-name Graphiti Long-Term Memory
 // //@api 3.0
-// //@version 0.1.2
+// //@version 0.1.3
 // //@author risu-graphiti-memory
 // //@link https://github.com/Suixinlei/risu-graphiti-memory
 // //@description Long-term memory layer backed by a Graphiti temporal knowledge graph sidecar. Retrieves relevant facts (with change history) into the prompt and ingests new messages. Requires the sidecar service (see repo README).
 // //@arg sidecar_url string Sidecar base URL (default http://127.0.0.1:8710)
-// //@arg enabled bool Enable memory injection and ingestion (default true)
+// //@arg enabled string Enable memory injection and ingestion: true or false (default true)
 // //@arg top_k int Facts to inject per request (default 8)
 // //@arg min_messages int Only inject when the prompt already has at least this many messages; keeps auxiliary calls (suggestions, summarizers) clean (default 8)
 // //@arg inject_depth int Insert the memory block this many messages from the end (0 = very end) (default 0)
@@ -46,10 +46,11 @@ async function loadConfig(): Promise<Config> {
     const v = await risuai.getArgument(k);
     return v === null || v === undefined || v === '' ? d : String(v);
   };
-  const num = async (k: string, d: number) => {
+  const num = async (k: string, d: number, min = 0, max = Infinity) => {
     const v = await risuai.getArgument(k);
     const n = v !== null && v !== undefined && v !== '' ? parseInt(String(v), 10) : NaN;
-    return Number.isFinite(n) ? n : d;
+    // RisuAI initializes int arguments to 0 even when no value was chosen.
+    return Number.isFinite(n) && n >= min && n <= max ? n : d;
   };
   const bool = async (k: string, d: boolean) => {
     const v = await risuai.getArgument(k);
@@ -60,28 +61,35 @@ async function loadConfig(): Promise<Config> {
   return {
     sidecar: (await str('sidecar_url', DEFAULTS.sidecar_url)).replace(/\/+$/, ''),
     enabled: await bool('enabled', DEFAULTS.enabled),
-    topK: await num('top_k', DEFAULTS.top_k),
-    minMessages: await num('min_messages', DEFAULTS.min_messages),
+    topK: await num('top_k', DEFAULTS.top_k, 1, 50),
+    minMessages: await num('min_messages', DEFAULTS.min_messages, 1),
     injectDepth: await num('inject_depth', DEFAULTS.inject_depth),
-    queryWindow: await num('query_window', DEFAULTS.query_window),
+    queryWindow: await num('query_window', DEFAULTS.query_window, 1),
   };
 }
 
 async function sidecarPost<T>(cfg: Config, path: string, body: unknown, timeoutMs = 8000): Promise<T | null> {
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    const resp = await risuai.nativeFetch(cfg.sidecar + path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    clearTimeout(timer);
-    if (!resp.ok) return null;
-    return (await resp.json()) as T;
+    const request = (async () => {
+      const resp = await risuai.nativeFetch(cfg.sidecar + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      return resp.ok ? (await resp.json()) as T : null;
+    })();
+    // Some hosts cannot forward AbortSignal across the plugin iframe. Bound
+    // our own wait too; a late accepted submission is safe to replay by name.
+    return await Promise.race([request, new Promise<null>((resolve) => {
+      timer = setTimeout(() => { ctrl.abort(); resolve(null); }, timeoutMs);
+    })]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -117,9 +125,30 @@ interface StoryTime {
   label: string;
 }
 
+interface Episode {
+  group_id: string;
+  name: string;
+  body: string;
+  source: 'message';
+  source_description: string;
+  reference_time: string;
+}
+
 interface Cursor {
+  // Captured through this position, not necessarily committed to Neo4j.
+  // Advancing count and storing the pending body are one local write.
   count: number;
   story?: StoryTime | null;
+  pending?: Episode[];
+}
+
+const CURSOR_PREFIX = 'graphiti-memory:cursor:';
+let storageChain: Promise<unknown> = Promise.resolve();
+
+function withStorage<T>(operation: () => Promise<T>): Promise<T> {
+  const result = storageChain.then(operation);
+  storageChain = result.catch(() => undefined);
+  return result;
 }
 
 const STATUS_BLOCK_RE = /<statusData>([\s\S]*?)<\/statusData>/gi;
@@ -151,88 +180,86 @@ function parseStoryTime(text: string): StoryTime | null {
   return null;
 }
 
-let ingestBusy = false;
+let draining = false;
+
+async function drainPending(): Promise<void> {
+  if (draining) return;
+  draining = true;
+  try {
+    const cfg = await loadConfig();
+    if (!cfg.enabled) return;
+    const storage = await risuai.getLocalPluginStorage();
+    const keys = (await storage.keys()).filter((key) => key.startsWith(CURSOR_PREFIX));
+    for (const key of keys) {
+      const episode = await withStorage(async () => (await storage.getItem<Cursor>(key))?.pending?.[0]);
+      if (!episode) continue;
+      // Dedicated v2 endpoint: an old sidecar returns 404 and cannot silently
+      // accept retries as independent episodes. 202 alone is NOT an ack.
+      const receipt = await sidecarPost<{ protocol: number; status: string; name: string }>(
+        cfg, '/episode/submit', episode, 6000,
+      );
+      if (receipt?.protocol !== 2 || receipt.status !== 'completed' || receipt.name !== episode.name) continue;
+      await withStorage(async () => {
+        const latest = await storage.getItem<Cursor>(key);
+        if (!latest) return;
+        // Re-read under the same lock used by capture: an ack must not erase
+        // a newer turn appended while the network request was in flight.
+        latest.pending = (latest.pending || []).filter((item) => item.name !== episode.name);
+        await storage.setItem(key, latest);
+      });
+    }
+  } catch {
+    // Storage/network failure retains the outbox for the next tick or reload.
+  } finally {
+    draining = false;
+  }
+}
 
 async function syncIngest(cfg: Config, aiContent: string): Promise<string> {
   if (!cfg.enabled) return aiContent;
-  // Fire-and-forget: never let memory problems break or delay the chat.
-  if (ingestBusy) return aiContent;
-  ingestBusy = true;
-  (async () => {
-    try {
-      const ctx = await currentContext();
-      if (!ctx || !ctx.chat) return;
-      const storage = await risuai.getLocalPluginStorage();
-      const key = `graphiti-memory:cursor:${ctx.group}`;
-      const msgs: ChatMsg[] = ctx.chat.message || [];
+  try {
+    // Snapshot the current conversation before waiting on another capture.
+    const ctx = await currentContext();
+    if (!ctx?.chat) return aiContent;
+    const msgs = ctx.chat.message || [];
+    const storage = await risuai.getLocalPluginStorage();
+    const key = CURSOR_PREFIX + ctx.group;
+    await withStorage(async () => {
       let cursor = await storage.getItem<Cursor>(key);
       if (!cursor) {
-        // First contact: do NOT ingest the whole history (an accidental full
-        // backfill through the live path floods the sidecar queue); start
-        // from the current user message. Use tools/backfill.py to ingest
-        // history deliberately.
-        const lastMsg = msgs[msgs.length - 1];
-        cursor = {
-          count: lastMsg && lastMsg.role === 'user' ? msgs.length - 1 : msgs.length,
-        };
+        const last = msgs[msgs.length - 1];
+        cursor = { count: last?.role === 'user' ? msgs.length - 1 : msgs.length };
       }
-
-      // History truncated/edited/regenerated below the cursor: resync forward
-      // (the skipped range is not re-ingested; stale facts are handled by the
-      // graph's temporal invalidation).
-      if (cursor.count > msgs.length) {
-        await storage.setItem(key, { count: msgs.length, story: cursor.story } as Cursor);
-        return;
-      }
-
-      // The whole turn (pending user messages + this AI reply) goes in as ONE
-      // role-tagged episode — matching the batched backfill format so the
-      // extraction LLM gets the same scene context on both paths.
+      const start = Math.min(cursor.count, msgs.length);
       const parts: string[] = [];
-      for (const m of msgs.slice(cursor.count)) {
+      for (const m of msgs.slice(start)) {
         const body = clean(m.data || '');
         if (body) parts.push(`——${m.role === 'user' ? '用户' : '角色'}——\n${body}`);
       }
       const aiText = clean(aiContent);
       if (aiText) parts.push(`——角色——\n${aiText}`);
-
-      // Story time: prefer this reply's statusData, then any message in the
-      // turn, then carry the last known clock forward (user-only turns keep
-      // the previous scene time).
       let story = parseStoryTime(aiContent);
-      if (!story) {
-        for (let i = msgs.length - 1; i >= cursor.count && !story; i--) {
-          story = parseStoryTime(msgs[i].data || '');
-        }
-      }
-      if (!story) story = cursor.story || null;
-
+      for (let i = msgs.length - 1; i >= start && !story; i--) story = parseStoryTime(msgs[i].data || '');
+      story = story || cursor.story || null;
+      const pending = cursor.pending || [];
       if (parts.length) {
-        const header = story ? `【剧情时间】${story.label}\n\n` : '';
-        await sidecarPost(
-          cfg,
-          '/episode',
-          {
-            group_id: ctx.group,
-            name: `live-${Date.now()}`,
-            body: header + parts.join('\n\n'),
-            source: 'message',
-            source_description: `${ctx.charName || 'chat'}/turn`,
-            reference_time: story ? story.dt : new Date().toISOString(),
-          },
-          6000,
-        );
+        pending.push({
+          group_id: ctx.group,
+          name: `live-v2-${crypto.randomUUID()}`,
+          body: (story ? `【剧情时间】${story.label}\n\n` : '') + parts.join('\n\n'),
+          source: 'message',
+          source_description: `${ctx.charName || 'chat'}/turn`,
+          reference_time: story ? story.dt : new Date().toISOString(),
+        });
       }
-      await storage.setItem(key, {
-        count: msgs.length + (aiText ? 1 : 0),
-        story: story || cursor.story || null,
-      } as Cursor);
-    } catch {
-      // swallow — memory sync must never surface in the chat
-    } finally {
-      ingestBusy = false;
-    }
-  })();
+      // Persist the complete turn BEFORE returning to the host or contacting
+      // the sidecar. Never advance the cursor independently of this payload.
+      await storage.setItem(key, { count: msgs.length + (aiText ? 1 : 0), story, pending } as Cursor);
+    });
+    void drainPending();
+  } catch {
+    console.warn('[graphiti_memory] Could not persist this turn; memory capture needs attention.');
+  }
   return aiContent;
 }
 
@@ -305,6 +332,7 @@ async function injectMemory(cfg: Config, messages: OpenAIChat[]): Promise<OpenAI
   await risuai.addRisuReplacer('beforeRequest', async (messages: OpenAIChat[]) => {
     const cfg = await loadConfig();
     if (!cfg.enabled) return messages;
+    void drainPending();
     return injectMemory(cfg, messages);
   });
   await risuai.addRisuReplacer('afterRequest', async (content: string) => {
@@ -312,4 +340,7 @@ async function injectMemory(cfg: Config, messages: OpenAIChat[]): Promise<OpenAI
     if (!cfg.enabled) return content;
     return syncIngest(cfg, content);
   });
+  // Recover all groups after reload, including chats no longer selected.
+  void drainPending();
+  setInterval(() => { void drainPending(); }, 15000);
 })();

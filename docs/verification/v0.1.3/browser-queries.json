@@ -1,0 +1,18 @@
+[
+  {
+    "query": "01-groups.cypher",
+    "rows": 7
+  },
+  {
+    "query": "02-graph.cypher",
+    "rows": 5
+  },
+  {
+    "query": "03-facts.cypher",
+    "rows": 5
+  },
+  {
+    "query": "04-episodes.cypher",
+    "rows": 3
+  }
+]

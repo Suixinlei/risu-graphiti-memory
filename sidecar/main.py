@@ -5,9 +5,10 @@ knowledge graph (Neo4j) and answers hybrid retrieval queries for prompt
 injection.
 
 Endpoints:
-  POST /episode  — queue a message/document for background ingestion (202)
+  POST /episode/submit — idempotent pending/completed receipt (202)
+  POST /episode  — compatible alias of /episode/submit
   POST /search   — hybrid search, returns temporal facts for injection
-  GET  /health   — neo4j connectivity + queue depth
+  GET  /health   — neo4j connectivity + queue/active/pending counts
   GET  /stats    — per-group node/edge/episode counts
 """
 
@@ -64,6 +65,9 @@ graphiti = Graphiti(
 
 queue: asyncio.Queue['EpisodeRequest'] = asyncio.Queue()
 ingest_stats = {'processed': 0, 'failed': 0}
+pending: dict[tuple[str, str], 'EpisodeRequest'] = {}
+submit_lock = asyncio.Lock()
+active = 0
 
 
 class EpisodeRequest(BaseModel):
@@ -73,6 +77,9 @@ class EpisodeRequest(BaseModel):
     source: Literal['message', 'text', 'json'] = 'message'
     source_description: str = ''
     reference_time: Optional[datetime] = None
+    # Only offline migration uses this; never trust an old name without
+    # matching its content, source and reference time as well.
+    legacy_name: Optional[str] = Field(default=None, min_length=1, max_length=256)
 
 
 class SearchRequest(BaseModel):
@@ -82,8 +89,10 @@ class SearchRequest(BaseModel):
 
 
 async def ingest_worker(name: str):
+    global active
     while True:
         req = await queue.get()
+        active += 1
         try:
             await graphiti.add_episode(
                 name=req.name,
@@ -101,6 +110,8 @@ async def ingest_worker(name: str):
             ingest_stats['failed'] += 1
             logger.exception('[%s] FAILED %s', name, req.name)
         finally:
+            active -= 1
+            pending.pop((req.group_id, req.name), None)
             queue.task_done()
 
 
@@ -123,6 +134,7 @@ async def lifespan(app: FastAPI):
     finally:
         for w in workers:
             w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
         await graphiti.close()
 
 
@@ -140,9 +152,44 @@ app.add_middleware(
 
 
 @app.post('/episode', status_code=202)
+@app.post('/episode/submit', status_code=202)
 async def add_episode(req: EpisodeRequest):
-    queue.put_nowait(req)
-    return {'queued': True, 'position': queue.qsize(), 'name': req.name}
+    def receipt(status: str):
+        return {'protocol': 2, 'status': status, 'queued': status == 'pending',
+                'position': queue.qsize(), 'name': req.name}
+
+    async with submit_lock:
+        key = (req.group_id, req.name)
+        previous = pending.get(key)
+        if previous is not None:
+            if previous.model_dump(exclude={'legacy_name'}) != req.model_dump(exclude={'legacy_name'}):
+                raise HTTPException(409, 'episode name already used with different content')
+            return receipt('pending')
+        records = await graphiti.driver.execute_query(
+            'MATCH (e:Episodic) WHERE e.group_id = $gid AND e.name IN $names '
+            'RETURN e.name AS name, e.content AS content, e.source AS source, '
+            'e.source_description AS description, e.valid_at AS reference_time',
+            gid=req.group_id, names=[req.name] + ([req.legacy_name] if req.legacy_name else []),
+        )
+        for record in sorted(records.records, key=lambda row: row['name'] != req.name):
+            stored_time = record['reference_time']
+            if hasattr(stored_time, 'to_native'):
+                stored_time = stored_time.to_native()
+            requested_time = req.reference_time
+            if requested_time is not None and requested_time.tzinfo is None:
+                requested_time = requested_time.replace(tzinfo=timezone.utc)
+            matches = (record['content'] == req.body and record['source'] == req.source
+                       and record['description'] == (req.source_description or 'chat')
+                       and (requested_time is None or stored_time == requested_time))
+            if matches:
+                return receipt('completed')
+            if record['name'] == req.name:
+                raise HTTPException(409, 'episode name already used with different content')
+        # A response lost after enqueue is safe: retries see pending, and a
+        # response lost after commit is safe: retries match the saved episode.
+        pending[key] = req
+        queue.put_nowait(req)
+        return receipt('pending')
 
 
 @app.post('/search')
@@ -187,6 +234,9 @@ async def health():
         'status': 'ok' if neo4j == 'ok' else 'degraded',
         'neo4j': neo4j,
         'queue_depth': queue.qsize(),
+        'active': active,
+        'pending': len(pending),
+        'ingest_protocol': 2,
         **ingest_stats,
     }
 

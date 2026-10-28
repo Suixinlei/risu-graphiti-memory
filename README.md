@@ -2,9 +2,9 @@
 
 给 [RisuAI](https://risuai.net) 增加基于 [Graphiti](https://github.com/getzep/graphiti) 和 Neo4j 的长期叙事记忆：记住发生过什么、关系怎样变化、哪些约定被后续剧情推翻，再把相关事实放回模型上下文。
 
-**当前版本：v0.1.2，早期版本。** 适合本机试用；需要配套 sidecar、Neo4j，以及可用的抽取模型和 embedding 服务，不能仅安装 JS 就运行。
+**当前版本：v0.1.3，早期版本。** 适合本机试用；需要配套 sidecar、Neo4j，以及可用的抽取模型和 embedding 服务，不能仅安装 JS 就运行。
 
-[下载 plugin.js](https://github.com/Suixinlei/risu-graphiti-memory/releases/download/v0.1.2/plugin.js) · [Release](https://github.com/Suixinlei/risu-graphiti-memory/releases/tag/v0.1.2) · [功能 Review](docs/review-2026-10-28.md) · [验证记录](docs/verification/v0.1.2.md)
+[下载 plugin.js](https://github.com/Suixinlei/risu-graphiti-memory/releases/download/v0.1.3/plugin.js) · [Release](https://github.com/Suixinlei/risu-graphiti-memory/releases/tag/v0.1.3) · [功能 Review](docs/review-2026-10-28.md) · [验证记录](docs/verification/v0.1.3.md)
 
 ## 能做什么
 
@@ -15,14 +15,14 @@
 | 时序事实 | 保留有效时间、失效时间和来源；旧事实标注为 `[已失效]` / `[被推翻]` |
 | 剧情时间 | 从 `<statusData>` 读取故事时钟，无时钟的后续轮次沿用已有时间 |
 | 历史导入 | 离线 CLI 显式导出、回填；新装插件不会自动扫描整个历史 |
-| 故障降级 | 检索失败或无结果时保持原请求；异步入库不阻塞回复，但不保证失败补偿 |
+| 故障降级 | 检索失败或无结果时保持原请求；回复先存入插件本地待提交记录；网络恢复后重试，服务确认完成后才移除 |
 
 记忆层用于事件、关系和变化历史。好感度、物品数量等当前数值仍由原来的变量系统维护。入库正文会移除 `<Thoughts>`、`<statusData>`、`<trim>` 内容。
 
 ```text
 RisuAI 插件 ── beforeRequest ──▶ sidecar /search ──▶ Neo4j
      │                              │                ▲
-     └── afterRequest ──▶ /episode 队列 ── Graphiti ──┘
+     └── afterRequest ──▶ /episode/submit 队列 ── Graphiti ──┘
                                           ├── 抽取 LLM
                                           └── Embedding API
 ```
@@ -36,7 +36,7 @@ RisuAI 插件 ── beforeRequest ──▶ sidecar /search ──▶ Neo4j
 ### 1. 下载源码并填写配置
 
 ```bash
-git clone --branch v0.1.2 https://github.com/Suixinlei/risu-graphiti-memory.git
+git clone --branch v0.1.3 https://github.com/Suixinlei/risu-graphiti-memory.git
 cd risu-graphiti-memory
 cp .env.example sidecar/.env
 ```
@@ -86,15 +86,15 @@ python3 -m venv .venv
 curl --fail http://127.0.0.1:8710/health
 ```
 
-预期包含 `"status":"ok"` 与 `"neo4j":"ok"`。这仅验证服务与数据库连通性，不证明模型端点可用，也不证明历史已经入库。
+预期包含 `"status":"ok"`、`"neo4j":"ok"` 与 `"ingest_protocol":2`。这仅验证服务与数据库连通性，不证明模型端点可用，也不证明历史已经入库。
 
 ### 4. 在 RisuAI 导入插件
 
-1. 从 [v0.1.2 Release](https://github.com/Suixinlei/risu-graphiti-memory/releases/tag/v0.1.2) 下载附件 **plugin.js**。
+1. 从 [v0.1.3 Release](https://github.com/Suixinlei/risu-graphiti-memory/releases/tag/v0.1.3) 下载附件 **plugin.js**。
 2. 打开 RisuAI → 设置 → 插件 → **＋**，在文件选择器中选中 JS。
 3. 启用 **Graphiti Long-Term Memory**，按提示授予 replacer 权限。
 4. 设置 `sidecar_url=http://127.0.0.1:8710`、`enabled=true`。
-5. 用测试会话发送消息，等待后台抽取后继续对话。首次接入不导入已有历史，默认至少 8 条请求消息才执行召回。
+5. 导入或更新后刷新 RisuAI 页面，再进入测试会话发送消息，等待后台抽取后继续对话。首次接入不导入已有历史，默认至少 8 条请求消息才执行召回。
 
 手机的 127.0.0.1 指手机自身，不能直接访问电脑 sidecar。本版本没有手机/LAN 的完整配置和验收方案；不要仅将服务开放到公网解决连接问题。
 
@@ -103,13 +103,19 @@ curl --fail http://127.0.0.1:8710/health
 | 参数 | 默认值 | 说明 |
 | --- | --- | --- |
 | sidecar_url | http://127.0.0.1:8710 | 服务地址 |
-| enabled | true | 同时控制召回与入库 |
+| enabled | true | 字符串 `true` / `false`，同时控制召回与入库；空值为 true |
 | top_k | 8 | 召回数量；服务端允许 1–50 |
 | min_messages | 8 | 请求消息数门槛，只约束召回，不约束 afterRequest 入库 |
 | inject_depth | 0 | 从消息末尾向前插入的位置；0 为末尾 |
 | query_window | 2000 | 客户端文本窗口；服务端最终只使用查询的前 400 字符 |
 
-参数每次请求重新读取。min_messages 只是启发式门槛，不能保证识别所有辅助生成。
+RisuAI 新建整数参数时显示 0；top_k、min_messages、query_window 的 0 或非法值回退到上表默认值，inject_depth=0 保持有效。参数每次请求重新读取。min_messages 只是启发式门槛，不能保证识别所有辅助生成。
+
+### 从旧版升级
+
+先停止你自己的 sidecar，更新源码到 v0.1.3，并用原配置重新启动。确认 `/health` 的 `ingest_protocol=2`，然后在 RisuAI 导入新版 plugin.js、同意更新并刷新页面。必须同时升级插件与 sidecar；新版客户端遇到旧服务会保留待提交记录，不能完成入库。不要删除原数据库、插件存储或 .env。
+
+修复只保护新版已捕获的轮次，无法自动找回旧版已经跳过的消息；需要补记时，请按下面步骤显式导出历史。
 
 ## 用 Neo4j Browser 看图谱
 
@@ -135,7 +141,9 @@ python3 tools/backfill.py ingest \
 
 --chat 是按文件名排序后的聊天文件索引。正常 group 必须匹配插件 `${chaId}-${chat.id}`，不能用角色显示名；插件另有字段缺失回退，并截到 128 字符。
 
-**续传仅适用于同一份固定导出文件。** episode 名称基于导出片段的相对位置；改变 --last、--batch 或导出范围后，可能名称碰撞而被错误跳过。保留原 JSONL 用于恢复，不要把 --skip-existing 当作跨导出文件的内容去重。
+episode 名称包含角色、会话、原始消息绝对位置及内容的 SHA-256。相同位置和内容在重叠导出窗口中保持同名，不同位置或编辑后的内容不会碰撞。改变 --batch 会形成新的分组名称，不会错误跳过，但也不承诺跨批次边界的语义去重。
+
+CLI 会等待 `completed` 回执才报告成功；超时或失败非零退出，保留 JSONL 后重跑即可续传。`--wait-timeout` 默认每批 600 秒，`--interval` 默认 1。`--skip-existing` 作为兼容参数保留，所有提交都自动检查幂等性。旧版 JSONL 也可重跑：服务核对正文、来源和时间，相同内容复用已有记录，同名不同内容会用新名称入库。
 
 202、queued、queue_depth=0 均不等于完成。检查 episode 是否出现、失败计数是否增长，再验证事实：
 
@@ -150,7 +158,9 @@ eval.py 是人工检查辅助工具，默认问题来自特定故事，不是自
 
 ## 已知限制与排查
 
-- **可能漏记**：提交失败后插件仍推进游标；内存队列在重启时可能丢失未完成任务；worker 失败只计数，没有持久化补偿。遗漏记忆需人工核对和恢复。
+- **恢复依赖插件存储**：每轮正文和游标一起写入本地待提交记录；约每 15 秒重试，并在启动和聊天时触发。页面关闭时不重试，重开后恢复。sidecar 队列仍在内存中，服务重启由客户端重新提交；本地存储写入失败、清空存储或卸载插件仍可能丢失待处理内容。永久失败会继续重试，需检查日志和配置。
+- **服务状态**：202 可能是 pending 或 completed，只有协议 2 的 completed 回执确认入库；`active` 包含执行中的任务，`pending` 包含排队和执行中的任务，计数在进程重启后归零。单 sidecar 进程、INGEST_CONCURRENCY=1 是去重和顺序保证的前提。
+- **语义抽取有不确定性**：模型可能只把“归还”识别为事件，没有提取新的所有权或标记旧状态失效。重要状态应核对图谱；可靠入库不等于每次语义判断正确。
 - **剧情时钟有假设**：固定 2026 年、UTC+8；多状态块时在线取最后可解析块，离线取首块。跨年及其他日期格式未支持。
 - **编辑/重新生成不等于撤销**：旧事实不会随聊天修改自动删除，后续抽取可能将其失效，但不保证立即修正。
 - **查询被截短**：整个 Graphiti 查询取前 400 字符，语义检索也使用该查询，尾部近期内容可能丢失。
@@ -176,11 +186,11 @@ npm run build
 python3 docs/verification/check_release.py
 ```
 
-检查类型、构建、Python 语法、版本，并使用合成 dump 执行离线导出 CLI，不启动现有服务或读取真实聊天。详见 [验证记录](docs/verification/v0.1.2.md)。
+检查类型、构建、Python 语法、版本，并使用合成 dump 执行离线导出 CLI，不启动现有服务或读取真实聊天。详见 [验证记录](docs/verification/v0.1.3.md)。
 
 `python3 tools/fake_llm.py` 在 127.0.0.1:18090 提供固定回复，将请求保存到 /tmp/fakellm-captures/，用于检查真实 RisuAI 发出的提示词，不能替代 Graphiti 抽取服务。其 /seed/database.bin 依赖开发者本地文件，不属于通用安装步骤。
 
-本次未完成真实 RisuAI + Neo4j + 模型端点全链路复验；构建和离线检查不代表抽取质量、跨版本兼容性已验收。贡献前请读 [AGENTS.md](AGENTS.md)。
+v0.1.3 的验证使用独立 RisuAI、Neo4j、sidecar 和真实抽取/embedding 端点；聊天回复由可控端点提供，以复现故障和时间变化。覆盖范围、复现步骤和证据见上面的验证记录；不代表所有宿主版本、流式生成及模型组合均兼容。贡献前请读 [AGENTS.md](AGENTS.md)。
 
 ## License
 

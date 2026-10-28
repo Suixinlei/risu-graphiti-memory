@@ -1,0 +1,64 @@
+{
+  "result": "PASS",
+  "checks": [
+    "real UI import/update and defaults",
+    "first-use skips historical messages",
+    "two offline turns captured without busy loss",
+    "page reload replays stable name",
+    "lost accepted response and forced sidecar crash recover without duplicates",
+    "different chat groups remain isolated",
+    "disabled generation makes no memory requests",
+    "real recalled facts appear in the outgoing model request",
+    "all four generated memory episodes receive completed acknowledgements"
+  ],
+  "groups": [
+    {
+      "character": "Graphmem E2E A",
+      "group": "2a2c4f0f-22fd-4a0f-8245-495ec436e63c-492f5ff2-a166-423b-8264-0aefea6db263",
+      "episodes": [
+        "live-v2-2041026e-aafc-4b17-8a4e-e019b16bc97f",
+        "live-v2-f5360218-d8e8-4436-b098-7d78bff84750",
+        "live-v2-fd5eb75a-993f-4d22-99ad-2040e0091997"
+      ]
+    },
+    {
+      "character": "Graphmem E2E B",
+      "group": "c91ab589-4f45-415c-b7d7-33653394480d-393184e4-8185-4675-a772-d16ee2a6d955",
+      "episodes": [
+        "live-v2-4d80dac9-c5e8-4ffa-aeed-909ddc6f7c2b"
+      ]
+    }
+  ],
+  "memory_blocks": [
+    "[长期记忆 · 时序事实检索]\n以下事实检索自本对话的更早历史，按相关性排序。标注[已失效]/[被推翻]的是已被后续剧情改变的旧状态，仅用于理解变化过程。\n1. [已失效] 阿澄将钴蓝信标钥匙交给林舟保管，钥匙自此归林舟所有（故事第16天，4月22日 周三 10:00）。\n2. 林舟归还钥匙后，阿澄重新拥有钴蓝信标钥匙，林舟不再持有钥匙（4月22日 11:00）\n3. 林舟已将钴蓝信标钥匙归还阿澄，钥匙所有权恢复为阿澄所有（4月22日 11:00）\n4. [已失效] 钴蓝信标钥匙现在归林舟所有。"
+  ],
+  "state": {
+    "offline_attempts_before_recovery": 8,
+    "first_name": "live-v2-fd5eb75a-993f-4d22-99ad-2040e0091997",
+    "reload_replayed_same_name": true,
+    "health_before_restart": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 0,
+      "active": 1,
+      "pending": 1,
+      "ingest_protocol": 2,
+      "processed": 9,
+      "failed": 0
+    },
+    "disabled_proxy_line_count": 25,
+    "disabled_at": 1793173674.967393,
+    "disabled_no_network_seconds": 77,
+    "health_before_forced_crash": {
+      "status": "ok",
+      "neo4j": "ok",
+      "queue_depth": 1,
+      "active": 1,
+      "pending": 2,
+      "ingest_protocol": 2,
+      "processed": 0,
+      "failed": 0
+    },
+    "crash_at": 1793173952.9050071
+  }
+}
