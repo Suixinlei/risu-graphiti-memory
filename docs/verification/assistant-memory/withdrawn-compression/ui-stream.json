@@ -1,0 +1,22 @@
+{
+  "check": "PASS Hypa-off streaming, assistant-only capture and source-matched context compression",
+  "assistant_outputs": [
+    {
+      "name": "assistant-v3-2da29a97929a7ab31fffafffa45a98defd45161f17e855eef55a258002db3533",
+      "status": "summarized",
+      "message_id": "59f2a8ec-5ed5-499b-9d37-6321018bad70",
+      "body": "ASSISTANT_REPLY_ONLY。林舟已归还蓝色地图，阿澄将地图收藏在图书馆。"
+    },
+    {
+      "name": "assistant-v3-66ca3fe1de8e697476047a9da480e35bb8ab66f945b27a4f3607c803835ac460",
+      "status": "completed",
+      "message_id": null,
+      "body": "ASSISTANT_REPLY_ONLY。林舟已归还蓝色地图，阿澄将地图收藏在图书馆。"
+    }
+  ],
+  "compressed_assistant_messages": 2,
+  "hypa_blocks": 0,
+  "recent_recap_blocks": 1,
+  "original_first_two_assistant_chars": 5638,
+  "compressed_first_two_assistant_chars": 140
+}

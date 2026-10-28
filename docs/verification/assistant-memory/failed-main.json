@@ -1,0 +1,5 @@
+{
+  "check": "PASS failed main generation does not capture user text or create assistant job",
+  "before_count": 6,
+  "after_count": 6
+}

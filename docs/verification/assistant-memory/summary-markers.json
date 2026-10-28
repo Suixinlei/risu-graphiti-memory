@@ -1,0 +1,62 @@
+{
+  "mode": "local HTTP contract; not full E2E",
+  "real_model_calls": 0,
+  "results": [
+    {
+      "case": "complete",
+      "result": "PASS"
+    },
+    {
+      "case": "whitespace",
+      "result": "PASS"
+    },
+    {
+      "case": "complete_at_limit",
+      "result": "PASS"
+    },
+    {
+      "case": "missing_close",
+      "result": "PASS"
+    },
+    {
+      "case": "missing_open",
+      "result": "PASS"
+    },
+    {
+      "case": "mismatched_close",
+      "result": "PASS"
+    },
+    {
+      "case": "bare_text",
+      "result": "PASS"
+    },
+    {
+      "case": "empty",
+      "result": "PASS"
+    },
+    {
+      "case": "nested",
+      "result": "PASS"
+    },
+    {
+      "case": "duplicate",
+      "result": "PASS"
+    },
+    {
+      "case": "preamble",
+      "result": "PASS"
+    },
+    {
+      "case": "trailing_text",
+      "result": "PASS"
+    },
+    {
+      "case": "oversized",
+      "result": "PASS"
+    },
+    {
+      "case": "all_input_chunks_processed",
+      "result": "PASS"
+    }
+  ]
+}

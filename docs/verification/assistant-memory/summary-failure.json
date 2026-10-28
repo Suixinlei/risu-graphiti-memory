@@ -1,0 +1,9 @@
+{
+  "check": "PASS empty summary failure retains source and explicit retry recovers",
+  "completion": {
+    "protocol": 3,
+    "name": "empty-summary-case",
+    "status": "completed"
+  },
+  "group": "assistant-empty-1793178902603676000"
+}

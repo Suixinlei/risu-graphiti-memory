@@ -1,0 +1,8 @@
+{
+  "check": "PASS real long-history UI dual mode captures only committed assistant output",
+  "auxiliary_requests": 37,
+  "assistant_turns": 1,
+  "status": "completed",
+  "body": "ASSISTANT_REPLY_ONLY。林舟已归还蓝色地图，阿澄将地图收藏在图书馆。",
+  "summary": "林舟将蓝色地图归还给了阿澄，阿澄随后把这张地图妥善收藏在图书馆中。该物品目前存放于图书馆，归阿澄保管，此线索暂告一段落，尚无后续发展。"
+}

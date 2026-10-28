@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -98,10 +99,12 @@ def main():
             archive.writestr(info, file.read_bytes())
     with zipfile.ZipFile(browser_zip) as archive:
         assert archive.testzip() is None
-        assert len(archive.namelist()) == 6
-    print('PASS: Browser query/guide archive (6 public documentation files)')
+        assert len(archive.namelist()) == len(browser_files)
+    print(f'PASS: Browser query/guide archive ({len(browser_files)} public documentation files)')
+    install_guide = bundle.parent / 'install-6001.md'
+    shutil.copyfile(ROOT / 'docs/install-6001.md', install_guide)
     checksums = []
-    for artifact in (bundle, browser_zip):
+    for artifact in (bundle, browser_zip, install_guide):
         digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
         checksums.append(f'{digest}  {artifact.name}\n')
         print(f'SHA256 {artifact.name}: {digest}')

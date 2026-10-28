@@ -1,0 +1,65 @@
+[
+  {
+    "check": "PASS durable acceptance without waiting for summary",
+    "receipt": {
+      "protocol": 3,
+      "name": "assistant-v3-test-1",
+      "status": "pending"
+    },
+    "elapsed_seconds": 0.059
+  },
+  {
+    "check": "PASS assistant summary and graph complete; duplicate replay and conflict rejection"
+  },
+  {
+    "check": "PASS narrative recap, graph retrieval, and group isolation",
+    "memory": {
+      "protocol": 3,
+      "recap": [
+        {
+          "name": "assistant-v3-test-1",
+          "summary": "阿澄把蓝色地图交给林舟保管，林舟承诺次日（明天）下午三点在图书馆归还地图。目前地图由林舟持有，归还一事尚待兑现。"
+        }
+      ],
+      "context": {},
+      "facts": [
+        {
+          "fact": "林舟承诺在图书馆归还蓝色地图",
+          "valid_at": "2026-04-22T02:00:00+00:00",
+          "invalid_at": null,
+          "expired": false
+        },
+        {
+          "fact": "蓝色地图目前由林舟持有，归还一事尚待兑现",
+          "valid_at": "2026-04-22T02:00:00+00:00",
+          "invalid_at": null,
+          "expired": false
+        },
+        {
+          "fact": "林舟承诺于次日（2026年4月23日）下午三点在图书馆向阿澄归还蓝色地图",
+          "valid_at": "2026-04-22T02:00:00+00:00",
+          "invalid_at": null,
+          "expired": false
+        },
+        {
+          "fact": "阿澄把蓝色地图交给林舟保管，目前由林舟持有",
+          "valid_at": "2026-04-22T02:00:00+00:00",
+          "invalid_at": null,
+          "expired": false
+        }
+      ],
+      "search_degraded": false
+    }
+  },
+  {
+    "check": "PASS context summaries match exact assistant revision, and avoid duplicate recap"
+  },
+  {
+    "check": "PASS assistant-only historical export and async summary ingest",
+    "output": "completed=1/1\ndone: completed=1/1 (existing identical episodes included)\n"
+  },
+  {
+    "check": "PASS assistant memory service E2E",
+    "group": "assistant-e2e-1793178399017635000"
+  }
+]

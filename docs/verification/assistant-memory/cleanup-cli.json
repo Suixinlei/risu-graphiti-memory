@@ -1,0 +1,131 @@
+{
+  "mode": "synthetic CLI export comparison",
+  "real_model_calls": 0,
+  "cases": [
+    {
+      "last": 0,
+      "batch": 1,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "f88bce2de54d728b612f193172766f413505e8696c5ab2a4104bcc79c9641437",
+      "after_sha256": "f88bce2de54d728b612f193172766f413505e8696c5ab2a4104bcc79c9641437"
+    },
+    {
+      "last": 0,
+      "batch": 1,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "23912110d7f460323ced5e683cbf46c1cdb83e4e3debfc02de10042d7341dcfb",
+      "after_sha256": "23912110d7f460323ced5e683cbf46c1cdb83e4e3debfc02de10042d7341dcfb"
+    },
+    {
+      "last": 0,
+      "batch": 2,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "e55ddf8a938e11d9de37dd496eafc582dc65d44ee961b656745b51eef2140fc5",
+      "after_sha256": "e55ddf8a938e11d9de37dd496eafc582dc65d44ee961b656745b51eef2140fc5"
+    },
+    {
+      "last": 0,
+      "batch": 2,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "2ed893ef8b17b704a492ddd5cad04430530b564ccebcc27294b45d2f30b460f0",
+      "after_sha256": "2ed893ef8b17b704a492ddd5cad04430530b564ccebcc27294b45d2f30b460f0"
+    },
+    {
+      "last": 2,
+      "batch": 1,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "a36bf51f3f279f974f6e6945112f665805e173606dc7007503e026f20b20110e",
+      "after_sha256": "a36bf51f3f279f974f6e6945112f665805e173606dc7007503e026f20b20110e"
+    },
+    {
+      "last": 2,
+      "batch": 1,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "5b9c23103efe7ba05dcc7d877ea15fc4520978d54a253bd146812074310cb9ab",
+      "after_sha256": "5b9c23103efe7ba05dcc7d877ea15fc4520978d54a253bd146812074310cb9ab"
+    },
+    {
+      "last": 2,
+      "batch": 2,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "9dbfe995a3d9918035c74ae5102256479142f81db19af78255e92dcbd60814da",
+      "after_sha256": "9dbfe995a3d9918035c74ae5102256479142f81db19af78255e92dcbd60814da"
+    },
+    {
+      "last": 2,
+      "batch": 2,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "5e76474dee6e4a3e915e11f9c940fe72abf08b6843b3215f88a3a154c945cab5",
+      "after_sha256": "5e76474dee6e4a3e915e11f9c940fe72abf08b6843b3215f88a3a154c945cab5"
+    },
+    {
+      "last": 3,
+      "batch": 1,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "c74029d8da78ccbff0e277ff348cf82ff50a3e8032a3aaeddb67c8726a55d8e5",
+      "after_sha256": "c74029d8da78ccbff0e277ff348cf82ff50a3e8032a3aaeddb67c8726a55d8e5"
+    },
+    {
+      "last": 3,
+      "batch": 1,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "23912110d7f460323ced5e683cbf46c1cdb83e4e3debfc02de10042d7341dcfb",
+      "after_sha256": "23912110d7f460323ced5e683cbf46c1cdb83e4e3debfc02de10042d7341dcfb"
+    },
+    {
+      "last": 3,
+      "batch": 2,
+      "assistant_only": false,
+      "result": "PASS",
+      "before_sha256": "070924578cd1e9892076bc1433d270bfe9636b55966aff20bb774c92f48f3d61",
+      "after_sha256": "070924578cd1e9892076bc1433d270bfe9636b55966aff20bb774c92f48f3d61"
+    },
+    {
+      "last": 3,
+      "batch": 2,
+      "assistant_only": true,
+      "result": "PASS",
+      "before_sha256": "33c138b461cc6f5a32665aa5b7d5a27d9d4cd675c142c39873cab95495cd9d64",
+      "after_sha256": "33c138b461cc6f5a32665aa5b7d5a27d9d4cd675c142c39873cab95495cd9d64"
+    }
+  ],
+  "fixture": {
+    "id": "chat",
+    "message": [
+      {
+        "role": "user",
+        "data": "用户指令。",
+        "time": 1
+      },
+      {
+        "role": "char",
+        "data": "<Thoughts>隐去</Thoughts>正式回复。<statusData>time:21:30|date:4月22日 周三</statusData>",
+        "chatId": "a",
+        "time": 2
+      },
+      {
+        "role": "assistant",
+        "data": "<trim>空白</trim>",
+        "chatId": "b",
+        "time": 3
+      },
+      {
+        "role": "assistant",
+        "data": "下一段。",
+        "chatId": "c",
+        "time": 4
+      }
+    ]
+  },
+  "fixture_character_dir": "合成角色--fixture"
+}

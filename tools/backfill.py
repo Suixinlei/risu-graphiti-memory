@@ -23,8 +23,8 @@ import json
 import re
 import sys
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -91,42 +91,54 @@ def cmd_export(args):
     n_msg = 0
     last_story = None
     for message in messages[:offset]:
-        last_story = parse_story_time(message.get('data') or '') or last_story
+        if not args.assistant_only or message.get('role') in ('char', 'assistant'):
+            last_story = parse_story_time(message.get('data') or '') or last_story
     with out.open('w', encoding='utf-8') as f:
         for start in range(0, len(sel), batch):
             chunk = sel[start : start + batch]
+            visible = [m for m in chunk if not args.assistant_only or m.get('role') in ('char', 'assistant')]
+            if not visible:
+                continue
             # 剧情时间：批内优先取最新的 statusData，没有则沿用上一次
             story = None
-            for m in reversed(chunk):
+            for m in reversed(visible):
                 story = parse_story_time(m.get('data') or '')
                 if story:
                     break
             if story:
                 last_story = story
             cur = story or last_story
-            parts = []
-            for m in chunk:
-                body = clean(m.get('data') or '')
-                if not body:
-                    continue
-                who = '用户' if m.get('role') == 'user' else '角色'
-                parts.append(f'——{who}——\n{body}')
-                n_msg += 1
-            if not parts:
+            cleaned = []
+            for message in visible:
+                body = clean(message.get('data') or '')
+                if body:
+                    cleaned.append((message, body))
+            if not cleaned:
                 continue
+            n_msg += len(cleaned)
             header = f"【剧情时间】{cur['label']}\n\n" if cur else ''
             ref = (
                 cur['dt'].isoformat()
                 if cur
                 else datetime.fromtimestamp(
-                    (chunk[-1].get('time') or 0) / 1000, tz=timezone.utc
+                    (visible[-1].get('time') or 0) / 1000, tz=timezone.utc
                 ).isoformat()
             )
+            if args.assistant_only:
+                body = '\n\n'.join(text for _, text in cleaned)
+            else:
+                parts = []
+                for message, text in cleaned:
+                    who = '用户' if message.get('role') == 'user' else '角色'
+                    parts.append(f'——{who}——\n{text}')
+                body = header + '\n'.join(parts)
             payload = {
-                'body': header + '\n'.join(parts),
+                'body': body,
                 'source_description': f'backfill/{char_name}/batch',
                 'reference_time': ref,
             }
+            if args.assistant_only and len(visible) == 1 and visible[0].get('chatId'):
+                payload['message_id'] = visible[0]['chatId']
             identity = {
                 'character': cands[0].name.rsplit('--', 1)[-1],
                 'chat': chat.get('id') or chat_files[args.chat].name,
@@ -134,7 +146,9 @@ def cmd_export(args):
                 'end': offset + start + len(chunk),
                 'payload': payload,
             }
-            payload['name'] = 'bf-v2-' + fingerprint(identity)
+            payload['name'] = ('assistant-v3-backfill-' if args.assistant_only else 'bf-v2-') + fingerprint(identity)
+            if args.assistant_only:
+                payload['pipeline'] = 'assistant-v3'
             f.write(json.dumps(payload, ensure_ascii=False) + '\n')
             n += 1
     print(f'exported {n} episodes ({n_msg} msgs, batch={batch}) -> {out}')
@@ -152,7 +166,10 @@ def episode_request(ep, group):
         'source_description': ep.get('source_description', 'backfill'),
         'reference_time': ep.get('reference_time'),
     }
-    if not body['name'].startswith('bf-v2-'):
+    if ep.get('pipeline') == 'assistant-v3':
+        body['pipeline'] = 'assistant-v3'
+        body['message_id'] = ep.get('message_id', '')
+    elif not body['name'].startswith('bf-v2-'):
         # Legacy JSONL lacks absolute source positions: hash its entire
         # request; the server verifies any legacy match by content as well.
         body['name'] = 'bf-v2-' + fingerprint(body)
@@ -161,14 +178,18 @@ def episode_request(ep, group):
 
 
 def submit(base, body):
+    assistant_only = body.get('pipeline') == 'assistant-v3'
+    path = '/assistant/submit' if assistant_only else '/episode/submit'
+    protocol = 3 if assistant_only else 2
     req = urllib.request.Request(
-        f"{base.rstrip('/')}/episode/submit", data=json.dumps(body).encode(),
+        base.rstrip('/') + path,
+        data=json.dumps({k: v for k, v in body.items() if k != 'pipeline'}).encode(),
         headers={'Content-Type': 'application/json'},
     )
     with urllib.request.urlopen(req, timeout=15) as response:
         receipt = json.load(response)
-    if receipt.get('protocol') != 2 or receipt.get('name') != body['name']:
-        raise RuntimeError('sidecar did not return a v2 receipt; upgrade the sidecar')
+    if receipt.get('protocol') != protocol or receipt.get('name') != body['name']:
+        raise RuntimeError('sidecar did not return a compatible receipt; upgrade the sidecar')
     if receipt.get('status') not in ('pending', 'completed'):
         raise RuntimeError('sidecar returned an unknown receipt status')
     return receipt['status']
@@ -230,6 +251,7 @@ def main():
     e.add_argument('--last', type=int, default=100)
     e.add_argument('--batch', type=int, default=1, help='messages per episode (more context = better entity/relationship extraction)')
     e.add_argument('--out', required=True)
+    e.add_argument('--assistant-only', action='store_true', help='export only assistant messages to the asynchronous summary pipeline')
 
     g = sub.add_parser('ingest')
     g.add_argument('--file', required=True)

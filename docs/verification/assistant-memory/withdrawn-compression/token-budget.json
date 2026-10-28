@@ -1,0 +1,7 @@
+{
+  "tokenizer": "cl100k_base",
+  "source": "RisuAI installed @dqbd/tiktoken",
+  "before_compression_without_injected_memory": 79252,
+  "final_request_including_memory": 74476,
+  "input_budget": 79744
+}

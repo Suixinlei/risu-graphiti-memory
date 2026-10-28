@@ -1,0 +1,6 @@
+{
+  "plugin_sha256": "fa6b2f11979c27575b801d1213f7652e008618c3022046a9d804d0a617a5fba4",
+  "check": "PASS no-compression focused real RisuAI request verification",
+  "rewrite_mapping_removed": true,
+  "existing_messages_preserved": true
+}

@@ -32,6 +32,7 @@ from config import config
 from embedder import BatchedEmbedder
 from llm import ExtraBodyLLMClient
 from ontology import ENTITY_TYPES, EXTRACTION_INSTRUCTIONS
+from assistant_memory import AssistantMemory
 from reranker import LexicalReranker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
@@ -68,6 +69,8 @@ ingest_stats = {'processed': 0, 'failed': 0}
 pending: dict[tuple[str, str], 'EpisodeRequest'] = {}
 submit_lock = asyncio.Lock()
 active = 0
+graphiti_write_lock = asyncio.Lock()
+assistant_memory = AssistantMemory(graphiti, graphiti_write_lock)
 
 
 class EpisodeRequest(BaseModel):
@@ -94,16 +97,17 @@ async def ingest_worker(name: str):
         req = await queue.get()
         active += 1
         try:
-            await graphiti.add_episode(
-                name=req.name,
-                episode_body=req.body,
-                source_description=req.source_description or 'chat',
-                reference_time=req.reference_time or datetime.now(timezone.utc),
-                source=EpisodeType(req.source),
-                group_id=req.group_id,
-                entity_types=ENTITY_TYPES,
-                custom_extraction_instructions=EXTRACTION_INSTRUCTIONS + _extra_extraction,
-            )
+            async with graphiti_write_lock:
+                await graphiti.add_episode(
+                    name=req.name,
+                    episode_body=req.body,
+                    source_description=req.source_description or 'chat',
+                    reference_time=req.reference_time or datetime.now(timezone.utc),
+                    source=EpisodeType(req.source),
+                    group_id=req.group_id,
+                    entity_types=ENTITY_TYPES,
+                    custom_extraction_instructions=EXTRACTION_INSTRUCTIONS + _extra_extraction,
+                )
             ingest_stats['processed'] += 1
             logger.info('[%s] ingested %s (qsize=%d)', name, req.name, queue.qsize())
         except Exception:
@@ -118,6 +122,7 @@ async def ingest_worker(name: str):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await graphiti.build_indices_and_constraints()
+    await assistant_memory.start()
     workers = [
         asyncio.create_task(ingest_worker(f'worker-{i}')) for i in range(config.ingest_concurrency)
     ]
@@ -135,10 +140,12 @@ async def lifespan(app: FastAPI):
         for w in workers:
             w.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
+        await assistant_memory.close()
         await graphiti.close()
 
 
 app = FastAPI(title='risu-graphiti-memory', lifespan=lifespan)
+app.include_router(assistant_memory.router)
 
 # The RisuAI plugin page (e.g. a statically-hosted instance on another local
 # port) calls this service cross-origin; it's a localhost-only personal tool,
@@ -154,6 +161,8 @@ app.add_middleware(
 @app.post('/episode', status_code=202)
 @app.post('/episode/submit', status_code=202)
 async def add_episode(req: EpisodeRequest):
+    if req.name.startswith('live-v2-'):
+        raise HTTPException(409, 'legacy live capture disabled; upgrade the plugin and reload RisuAI')
     def receipt(status: str):
         return {'protocol': 2, 'status': status, 'queued': status == 'pending',
                 'position': queue.qsize(), 'name': req.name}
@@ -237,6 +246,9 @@ async def health():
         'active': active,
         'pending': len(pending),
         'ingest_protocol': 2,
+        'assistant_memory_protocol': 3,
+        'assistant_pending': len(assistant_memory.queued),
+        'assistant_queue_depth': assistant_memory.queue.qsize(),
         **ingest_stats,
     }
 

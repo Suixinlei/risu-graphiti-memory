@@ -1,0 +1,32 @@
+{
+  "check": "PASS original assistant messages preserved; no context compression or rewrite mapping",
+  "original_assistant_messages": [
+    {
+      "message": 0,
+      "original_chars": 2819,
+      "sent_chars": 2819,
+      "unchanged": true
+    },
+    {
+      "message": 1,
+      "original_chars": 2819,
+      "sent_chars": 2819,
+      "unchanged": true
+    },
+    {
+      "message": 2,
+      "original_chars": 2819,
+      "sent_chars": 2819,
+      "unchanged": true
+    },
+    {
+      "message": 3,
+      "original_chars": 2819,
+      "sent_chars": 2819,
+      "unchanged": true
+    }
+  ],
+  "rewritten_messages": 0,
+  "memory_blocks": 1,
+  "rewrite_mapping_returned": false
+}

@@ -1,0 +1,31 @@
+{
+  "scope": "lightweight local checks only; not full E2E",
+  "real_model_calls": 0,
+  "commands": [
+    {
+      "command": "sidecar/.venv/bin/python tools/check_assistant_summary.py",
+      "result": "PASS (14 cases)"
+    },
+    {
+      "command": "python3 docs/verification/check_release.py",
+      "result": "PASS: typecheck, build, metadata, 20 Python syntax files, offline CLI, links, Browser archive"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "cleanup_export_comparison": "PASS (12 byte-identical cases)",
+  "artifacts": {
+    "plugin.js": {
+      "bytes": 12050,
+      "sha256": "5f2e4fd0916bb3b772ac7717f083d4ab46a287ef3a42f53224df1c188de38704"
+    },
+    "neo4j-browser.zip": {
+      "bytes": 6701,
+      "sha256": "fa104acb8a104017f23ab0b3ad73b366d0ffec28affbcde117259e568bff26ca"
+    }
+  },
+  "release_created": false,
+  "original_6001_modified": false
+}

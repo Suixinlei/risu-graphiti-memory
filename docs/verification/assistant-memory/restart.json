@@ -1,0 +1,22 @@
+{
+  "check": "PASS durable assistant job recovery after forced crash",
+  "group": "assistant-restart-1793178057555712000",
+  "health_before_crash": {
+    "status": "ok",
+    "neo4j": "ok",
+    "queue_depth": 0,
+    "active": 0,
+    "pending": 0,
+    "ingest_protocol": 2,
+    "assistant_memory_protocol": 3,
+    "assistant_pending": 1,
+    "assistant_queue_depth": 0,
+    "processed": 0,
+    "failed": 0
+  },
+  "completion": {
+    "protocol": 3,
+    "name": "assistant-v3-restart",
+    "status": "completed"
+  }
+}

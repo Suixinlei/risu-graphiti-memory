@@ -1,0 +1,9 @@
+{
+  "check": "PASS four assistant-only historical summaries completed",
+  "statuses": [
+    "completed",
+    "completed",
+    "completed",
+    "completed"
+  ]
+}

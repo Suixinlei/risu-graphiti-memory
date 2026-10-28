@@ -1,0 +1,6 @@
+{
+  "check": "PASS legacy-only facts excluded from assistant memory",
+  "legacy_marker_searchable": true,
+  "new_memory_marker_excluded": true,
+  "new_assistant_facts_returned": 16
+}

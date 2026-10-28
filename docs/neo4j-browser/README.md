@@ -9,7 +9,7 @@ Browser 随 Neo4j 自带，不需要安装额外服务。入口：[本机 Browse
 3. Database user 为 neo4j，密码使用你配置的 NEO4J_PASSWORD；Database 选择 neo4j。已有卷用原密码，不要重置或关闭认证。
 4. 顶部应显示 connected。HTTP 200 只说明页面可用，真正连接成功后才能运行查询。
 
-## 四个可保存的查询
+## 五个可保存的查询
 
 在 Browser 的 Queries 中新建查询，粘贴下列文件内容。当前界面会自动保存编辑内容；双击顶部查询标签可改名。不同 Browser 版本也可能使用 Favorites/星标入口。
 
@@ -19,6 +19,7 @@ Browser 随 Neo4j 自带，不需要安装额外服务。入口：[本机 Browse
 | 02 关系图谱 | [02-graph.cypher](02-graph.cypher) | 最近创建的最多 80 条关系，切到 Graph 查看 |
 | 03 事实时间线 | [03-facts.cypher](03-facts.cypher) | 事实正文、失效标记、剧情时间与来源 UUID |
 | 04 入库记录 | [04-episodes.cypher](04-episodes.cypher) | 最近 100 条 episode 元数据，不展示原始聊天正文 |
+| 05 assistant 摘要 | [05-assistant-summaries.cypher](05-assistant-summaries.cypher) | 按 group 查看持久任务状态及摘要 |
 
 先运行会话概览，复制目标 group_id。回到 Stream，单独执行：
 
@@ -26,7 +27,7 @@ Browser 随 Neo4j 自带，不需要安装额外服务。入口：[本机 Browse
 :param group_id => '替换为会话概览中的完整 group_id'
 ```
 
-然后运行 02–04。要找最近创建 episode 所属的 group，可以先执行下面的查询，再把返回值复制到上面的 :param 命令；**它可能是测试或回填 group，不保证是当前 RisuAI 会话**：
+然后运行 02–05。要找最近创建 episode 所属的 group，可以先执行下面的查询，再把返回值复制到上面的 :param 命令；**它可能是测试或回填 group，不保证是当前 RisuAI 会话**：
 
 ```cypher
 MATCH (e:Episodic)
@@ -63,3 +64,7 @@ LIMIT 1;
 检查前的失败场景：HTTP 可用但 Bolt 不可用、登录失败或选错数据库、参数缺失/选错 group、关系属性或标签不匹配、查询语法不兼容、跨 group 结果及大图渲染问题。先用只读查询验证，再检查 Browser 的 connected、查询表格与 Graph 视图。
 
 界面和参数语法参考 [Neo4j Browser 参数文档](https://github.com/neo4j/neo4j-browser/blob/master/docs/modules/ROOT/pages/operations/query-parameters.adoc)，关系/属性名称核对本地 Graphiti 0.31.2 源码。当前本机验证结果见 [Browser 检查记录](../verification/neo4j-browser-2026-10-28.md)。
+
+## v0.2.0：assistant 摘要
+
+`05-assistant-summaries.cypher` 按 group 显示 AssistantTurn 状态和摘要，不主动显示原文。pending/error 表示尚未完成摘要或图谱写入；只有 completed 确认两阶段完成。原文和摘要均保留在独立节点，v0.1.3 发布包没有此查询。

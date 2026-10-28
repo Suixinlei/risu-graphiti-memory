@@ -1,0 +1,76 @@
+{
+  "result": "REPRODUCED_UNSAFE_DUAL_MODE",
+  "valid_controls": [
+    {
+      "case": "DUAL_RECALL",
+      "hypa_blocks": 1,
+      "graphiti_blocks": 1
+    },
+    {
+      "case": "FRESH_GRAPH_ONLY",
+      "hypa_blocks": 0,
+      "graphiti_blocks": 1
+    },
+    {
+      "case": "FRESH_HYPA_ONLY",
+      "hypa_blocks": 1,
+      "graphiti_blocks": 0
+    }
+  ],
+  "earlier_same_origin_controls_invalidated": [
+    {
+      "case": "GRAPH_ONLY_CONTROL",
+      "hypa_blocks": 0,
+      "graphiti_blocks": 1
+    },
+    {
+      "case": "GRAPH_ONLY_STRICT",
+      "hypa_blocks": 0,
+      "graphiti_blocks": 1
+    }
+  ],
+  "persisted_summary_episodes": [
+    {
+      "name": "live-v2-6d0f37a5-6012-4b47-abd3-faac4789d0b6",
+      "summary": true,
+      "reply": false,
+      "body_chars": 114
+    },
+    {
+      "name": "live-v2-53384371-67e9-4f57-af34-2d9c99813767",
+      "summary": true,
+      "reply": false,
+      "body_chars": 67
+    },
+    {
+      "name": "live-v2-284b280d-d236-4aca-94b3-369d2b07c5a8",
+      "summary": true,
+      "reply": false,
+      "body_chars": 67
+    }
+  ],
+  "dual_queue_observation": {
+    "results": [
+      {
+        "pending": 76,
+        "summaryPending": 74,
+        "replyPending": 2
+      }
+    ]
+  },
+  "hypa_only_queue_before": null,
+  "hypa_only_queue_after": {
+    "results": []
+  },
+  "source_database_matches_snapshot_now": false,
+  "source_integrity_checks": {
+    "copy_time_database_sha_matched": true,
+    "later_byte_hash_drifted": true,
+    "source_contains_test_markers": false,
+    "source_max_context": 300000,
+    "source_hypav3_enabled": true,
+    "source_test_model_active": false
+  },
+  "earlier_same_origin_controls_invalidated_reason": "Early queue snapshots were taken while prior card postprocessing/callbacks were still outstanding; final controls used fresh origins and actual captured requests.",
+  "telemetry_note": "Earlier shared-endpoint samples were overwritten by older pages and are discarded for Hypa-only. After navigating older test pages to about:blank, only the fresh Hypa-only page reported; no cursor/outbox keys existed."
+}
