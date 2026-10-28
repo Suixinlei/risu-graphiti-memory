@@ -1,0 +1,15 @@
+> risu-graphiti-memory-plugin@0.1.2 typecheck
+> tsc --noEmit
+> risu-graphiti-memory-plugin@0.1.2 build
+> node build.mjs
+
+dist/plugin.js written: 9417 bytes
+PASS: release metadata and package versions = 0.1.2
+PASS: Python syntax (10 files; no imports/services)
+PASS: export CLI batching, role tags, cleaning, story clock and carry-forward
+KNOWN LIMITATION reproduced: distinct export windows reuse bf-0000-0000
+PASS: relative Markdown links resolve
+PASS: Browser query/guide archive (6 public documentation files)
+SHA256 plugin.js: 836e3fda123d40c7f6ff009731df31a08b37116d7188c79108a70378cc33d61b
+SHA256 neo4j-browser.zip: 8b9019d58f320bff82c97da48b514923e2f0d56ac1988e4cb167e8e9fffe4f88
+PASS: offline release checks; full product E2E NOT RUN
