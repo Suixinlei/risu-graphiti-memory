@@ -15,6 +15,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -34,6 +35,16 @@ from reranker import LexicalReranker
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
 logger = logging.getLogger('graphmem')
+
+# Optional canonical-name roster (see sidecar/roster.txt): teaches the
+# extraction LLM that alias variants are one character, so 塞西尔/塞西尔·布兰榭/
+# Cécile don't become three nodes. Card-agnostic: it's just text appended to
+# the extraction instructions per episode.
+ROSTER_FILE = Path(__file__).resolve().parent / 'roster.txt'
+_extra_extraction = ''
+if ROSTER_FILE.exists():
+    _extra_extraction = '\n\n' + ROSTER_FILE.read_text(encoding='utf-8')
+    logger.info('roster loaded: %d chars', len(_extra_extraction))
 
 graphiti = Graphiti(
     uri=config.neo4j_uri,
@@ -82,7 +93,7 @@ async def ingest_worker(name: str):
                 source=EpisodeType(req.source),
                 group_id=req.group_id,
                 entity_types=ENTITY_TYPES,
-                custom_extraction_instructions=EXTRACTION_INSTRUCTIONS,
+                custom_extraction_instructions=EXTRACTION_INSTRUCTIONS + _extra_extraction,
             )
             ingest_stats['processed'] += 1
             logger.info('[%s] ingested %s (qsize=%d)', name, req.name, queue.qsize())

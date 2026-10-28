@@ -23,7 +23,7 @@ import re
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 THOUGHTS_RE = re.compile(r'<Thoughts>.*?</Thoughts>\s*', re.DOTALL | re.IGNORECASE)
@@ -35,6 +35,37 @@ def clean(text: str) -> str:
     for rx in (THOUGHTS_RE, STATUS_RE, TRIM_RE):
         text = rx.sub('', text)
     return text.strip()
+
+
+def parse_story_time(text: str):
+    """Extract the in-story clock from a <statusData> block:
+    time:17:05|date:4月20日 周一|daysElapsed:14|...
+    Returns {'dt': datetime, 'label': str} or None."""
+    m = re.search(r'<statusData>(.*?)</statusData>', text, re.DOTALL | re.IGNORECASE)
+    if not m:
+        return None
+    fields = {}
+    for kv in m.group(1).split('|'):
+        if ':' in kv:
+            k, _, v = kv.partition(':')
+            fields[k.strip()] = v.strip()
+    md = re.search(r'(\d{1,2})月(\d{1,2})日', fields.get('date', ''))
+    hm = re.match(r'(\d{1,2}):(\d{2})', fields.get('time', ''))
+    if not (md and hm):
+        return None
+    days = fields.get('daysElapsed')
+    label = f"{fields.get('date', '')} {fields.get('time', '')}".strip()
+    if days:
+        label += f"（故事第{days}天）"
+    try:
+        dt = datetime(
+            2026, int(md.group(1)), int(md.group(2)),
+            int(hm.group(1)), int(hm.group(2)),
+            tzinfo=timezone(timedelta(hours=8)),
+        )
+        return {'dt': dt, 'label': label}
+    except ValueError:
+        return None
 
 
 def cmd_export(args):
@@ -50,29 +81,54 @@ def cmd_export(args):
     messages = chat.get('message') or []
     sel = messages[-args.last:] if args.last else messages
     out = Path(args.out)
+    batch = max(1, args.batch)
     n = 0
+    n_msg = 0
+    last_story = None
     with out.open('w', encoding='utf-8') as f:
-        for i, m in enumerate(sel):
-            body = clean(m.get('data') or '')
-            if not body:
+        for start in range(0, len(sel), batch):
+            chunk = sel[start : start + batch]
+            # 剧情时间：批内优先取最新的 statusData，没有则沿用上一次
+            story = None
+            for m in reversed(chunk):
+                story = parse_story_time(m.get('data') or '')
+                if story:
+                    break
+            if story:
+                last_story = story
+            cur = story or last_story
+            parts = []
+            for m in chunk:
+                body = clean(m.get('data') or '')
+                if not body:
+                    continue
+                who = '用户' if m.get('role') == 'user' else '角色'
+                parts.append(f'——{who}——\n{body}')
+                n_msg += 1
+            if not parts:
                 continue
+            header = f"【剧情时间】{cur['label']}\n\n" if cur else ''
+            ref = (
+                cur['dt'].isoformat()
+                if cur
+                else datetime.fromtimestamp(
+                    (chunk[-1].get('time') or 0) / 1000, tz=timezone.utc
+                ).isoformat()
+            )
             f.write(
                 json.dumps(
                     {
-                        'name': f'bf-{i:04d}',
-                        'role': m.get('role'),
-                        'body': body,
-                        'source_description': f'backfill/{char_name}/{m.get("role", "?")}',
-                        'reference_time': datetime.fromtimestamp(
-                            (m.get('time') or 0) / 1000, tz=timezone.utc
-                        ).isoformat(),
+                        'name': f'bf-{start:04d}-{start + len(chunk) - 1:04d}',
+                        'body': header + '\n'.join(parts),
+                        'source_description': f'backfill/{char_name}/batch',
+                        'reference_time': ref,
                     },
                     ensure_ascii=False,
                 )
                 + '\n'
             )
             n += 1
-    print(f'exported {n}/{len(sel)} messages -> {out}')
+    print(f'exported {n} episodes ({n_msg} msgs, batch={batch}) -> {out}')
 
 
 def cmd_ingest(args):
@@ -130,6 +186,7 @@ def main():
     e.add_argument('--char', required=True)
     e.add_argument('--chat', type=int, default=0)
     e.add_argument('--last', type=int, default=100)
+    e.add_argument('--batch', type=int, default=1, help='messages per episode (more context = better entity/relationship extraction)')
     e.add_argument('--out', required=True)
 
     g = sub.add_parser('ingest')

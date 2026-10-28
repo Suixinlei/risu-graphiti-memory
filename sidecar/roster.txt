@@ -1,0 +1,42 @@
+已知角色名册（每行第一个为正名，冒号后为同一人在正文中的别名/全名/外文名，全部视为同一角色，实体抽取时一律使用正名；不在名册内的人名才新建实体）：
+艾丽西亚（alicia）：艾丽西亚·德·拉·玛利亚布兰什、Alicia de la Mariéeblanche、Alicia、Mariéeblanche
+触手君（tentacles）：Mr. Tentacles、Tentacles
+诗织（shiori）：雨宫诗织、Shiori Amemiya、Shiori、Amemiya
+露琪亚（lucie）：露琪亚·埃纳凯、Lucie Enache、Lucie、Enache
+雅（miyabi）：京极雅、Miyabi Kyogoku、Miyabi、Kyogoku
+海伦（helen）：海伦·威尔斯、Helen Wells、Helen、Wells
+达莉娅（daria）：达莉娅·斯米尔诺娃、Daria Smirnova、Daria、Smirnova
+香奈诗（kanashi）：Kanashi
+伊恩（ian）：伊恩·威尔斯、Ian Wells、Ian、Wells
+阿丽娜（alina）：阿丽娜·贝洛娃、Alina Belova、Alina、Belova
+卡米耶（camille）：卡米耶·德·维利埃、Camille de Villiers、Camille、Villiers
+凛（rin）：白雪凛、Rin Shirayuki、Rin、Shirayuki
+茜（akane）：镜茜、Akane Kagami、Akane、Kagami
+莉奥（rio）：镜莉奥、Rio Kagami、Rio、Kagami
+瑞穗（mizuho）：三枝瑞穗、Mizuho Saegusa、Mizuho、Saegusa
+爱莉（airi）：月濑爱莉、Airi Tsukise、Airi、Tsukise
+伊娃（eva）：伊娃·玛丽安·罗森菲尔德、Eva Mariane Rosenfeld、Eva、Rosenfeld
+塞西尔（cecile）：塞西尔·布兰榭、Cécile Blanchet、Cécile、Blanchet
+埃尔西（elsie）：埃尔西·阿什福德、Elsie Ashford、Elsie、Ashford
+诺亚（noah）：雪光诺亚、Noah Yukimitsu、Noah、Yukimitsu
+索蕾娜（solene）：索蕾娜·德·维利埃、Solène de Villiers、Solène、Villiers
+日和（hiyori）：月城日和、Hiyori Tsukishiro、Hiyori、Tsukishiro
+柚月（yuzuki）：一之濑柚月、Yuzuki Ichinose、Yuzuki、Ichinose
+比安卡（bianca）：比安卡·奥尔西尼、Bianca Orsini、Bianca、Orsini
+露西（lucy）：露西·哈里斯、Lucy Harris、Lucy、Harris
+由梦（yume）：黑月由梦、Yume Kurotsuki、Yume、Kurotsuki
+瑟琳（sorine）：瑟琳·林德伯格、Sorine Lindberg、Sorine、Lindberg
+艾莉（ellie）：艾莉·威尔斯、Ellie Wells、Ellie、Wells
+克洛伊（chloe）：克洛伊·里希特、Chloe Richter、Chloe、Richter
+书允（seoyoon）：柳书允、Seoyoon Yoo、Seoyoon、Yoo
+琪亚拉（chiara）：琪亚拉·里佐、Chiara Rizzo、Chiara、Rizzo
+瑞贤（seohyun）：申瑞贤、Seohyun Shin、Seohyun、Shin
+阿兰（aran）：柳阿兰、Aran Yu、Aran、Yu
+塞西莉亚（caecilia）：塞西莉亚·莫里亚蒂、Caecilia Moriarty、Caecilia、Moriarty
+埃莉诺（eleonore）：埃莉诺·莫里亚蒂、Eleonore Moriarty、Eleonore、Moriarty
+米娜（mina）：姜米娜、Mina Kang、Mina、Kang
+康拉德（konrad）：康拉德·伯恩哈特、Konrad Bernhardt、Konrad、Bernhardt
+马泰奥（matteo）：马泰奥·瓦伦蒂尼、Matteo Valentini、Matteo、Valentini
+龙司（ryuuji）：桐谷龙司、Ryuuji Kirigaya、Ryuuji、Kirigaya
+塞伊姆（seimu）：星野塞伊姆、Seimu Hoshino、Seimu、Hoshino
+西娅（sia）：Sia

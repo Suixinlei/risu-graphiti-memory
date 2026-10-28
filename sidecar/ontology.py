@@ -84,5 +84,6 @@ The narrative is primarily Chinese (may mix English). Extract entities and facts
 - Discrete events worth remembering: meetings, gifts, conflicts, revelations, agreements,
   schedule changes. Skip routine filler actions.
 - Reference times stated in the story (dates, "next day", class periods) belong in facts
-  when present.
+  when present. If the episode body starts with a 【剧情时间】 header, date facts on that
+  in-story calendar (e.g. "4月21日 12:15"), NOT real-world time.
 """
