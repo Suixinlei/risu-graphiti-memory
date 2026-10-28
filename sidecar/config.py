@@ -27,7 +27,7 @@ class Config:
     # unless thinking is disabled; extra kwargs merged into every completion call.
     llm_extra_body_json: str = field(default_factory=lambda: _env('LLM_EXTRA_BODY', '{"thinking":{"type":"disabled"}}'))
     llm_temperature: float = field(default_factory=lambda: float(_env('LLM_TEMPERATURE', '0.0')))
-    llm_max_tokens: int = field(default_factory=lambda: int(_env('LLM_MAX_TOKENS', '8192')))
+    llm_max_tokens: int = field(default_factory=lambda: int(_env('LLM_MAX_TOKENS', '16384')))
 
     # Embedder — OpenAI-compatible endpoint
     embedding_base_url: str = field(default_factory=lambda: _env('EMBEDDING_BASE_URL', 'http://127.0.0.1:8080/v1'))

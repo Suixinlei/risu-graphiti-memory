@@ -18,14 +18,16 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from graphiti_core import Graphiti
-from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
+from graphiti_core.embedder.openai import OpenAIEmbedderConfig
 from graphiti_core.nodes import EpisodeType
 from graphiti_core.search.search_filters import SearchFilters
 
 from config import config
+from embedder import BatchedEmbedder
 from llm import ExtraBodyLLMClient
 from ontology import ENTITY_TYPES, EXTRACTION_INSTRUCTIONS
 from reranker import LexicalReranker
@@ -38,7 +40,7 @@ graphiti = Graphiti(
     user=config.neo4j_user,
     password=config.neo4j_password,
     llm_client=ExtraBodyLLMClient(),
-    embedder=OpenAIEmbedder(
+    embedder=BatchedEmbedder(
         config=OpenAIEmbedderConfig(
             api_key=config.embedding_api_key,
             base_url=config.embedding_base_url,
@@ -115,6 +117,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title='risu-graphiti-memory', lifespan=lifespan)
 
+# The RisuAI plugin page (e.g. a statically-hosted instance on another local
+# port) calls this service cross-origin; it's a localhost-only personal tool,
+# so permissive CORS is fine.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
+
 
 @app.post('/episode', status_code=202)
 async def add_episode(req: EpisodeRequest):
@@ -124,9 +136,13 @@ async def add_episode(req: EpisodeRequest):
 
 @app.post('/search')
 async def search(req: SearchRequest):
+    # CJK fulltext guard: Neo4j/Lucene tokenizes Chinese per character, and a
+    # long query explodes the boolean maxClauseCount (1024). Truncate hard;
+    # the semantic leg stays useful and 400 CJK chars ≈ 400 clauses < limit.
+    query = req.query[:400]
     try:
         edges = await graphiti.search(
-            req.query,
+            query,
             group_ids=[req.group_id],
             num_results=req.limit,
             search_filter=SearchFilters(),
@@ -161,6 +177,38 @@ async def health():
         'neo4j': neo4j,
         'queue_depth': queue.qsize(),
         **ingest_stats,
+    }
+
+
+@app.get('/episodes')
+async def episodes(group_id: str, limit: int = 2000):
+    """Episode names present in a group (for resumable backfill)."""
+    result = await graphiti.driver.execute_query(
+        'MATCH (e:Episodic) WHERE e.group_id = $gid RETURN e.name AS name ORDER BY e.name',
+        gid=group_id,
+    )
+    return {'names': [r['name'] for r in result.records]}
+
+
+@app.get('/entities')
+async def entities(group_id: str, q: str = '', limit: int = 50):
+    """List entities (name, labels, summary) for inspection: duplicate-name
+    detection, extraction sanity checks."""
+    result = await graphiti.driver.execute_query(
+        """
+        MATCH (n:Entity) WHERE n.group_id = $gid AND n.name CONTAINS $q
+        RETURN n.name AS name, labels(n) AS labels, n.summary AS summary
+        ORDER BY size(n.summary) DESC LIMIT $limit
+        """,
+        gid=group_id,
+        q=q,
+        limit=limit,
+    )
+    return {
+        'entities': [
+            {'name': r['name'], 'labels': [x for x in r['labels'] if x != 'Entity'], 'summary': r['summary']}
+            for r in result.records
+        ]
     }
 
 
